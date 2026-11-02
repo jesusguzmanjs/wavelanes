@@ -15,7 +15,7 @@ Traktor's parallel waveforms taking the whole screen:
 - **A settings window**, opened from a button in Traktor's header, next to
   the logo.
 
-![Three lanes with no track decks: two Stem tracks, each with its left panel (title, BPM and pitch, key, remaining time, beats to the next cue)](docs/lanes.png)
+![Three lanes filling the window, with no decks or browser: two Stem tracks, each with its left panel (title, BPM and pitch, key, remaining time, beats to the next cue)](docs/lanes.png)
 
 Everything is applied to a **copy** of Traktor. The original installation is
 never touched.
