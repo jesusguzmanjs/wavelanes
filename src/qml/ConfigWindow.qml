@@ -599,6 +599,11 @@ Window {
                         tip: "Removes the track decks under the lanes in the Parallel Full layout. All other layouts keep their decks."
                         onToggled: restartSection.fitLaneHeight(restartSection.lanes, restartSection.hideDecks)
                     }
+                    RestartToggle {
+                        text: "Hide Browser (Only Maximised)"
+                        key: "hideBrowser"
+                        tip: "Removes the browser under the lanes, and the decks over the maximised browser. The lanes then share the window's height, and the browser only opens maximised, in every layout."
+                    }
                     Stepper {
                         text: "Lanes"
                         tip: "With 3, lane D goes; deck D stays."
@@ -612,6 +617,8 @@ Window {
                         onUp: setLanes(4)
                     }
                     Stepper {
+                        // Without the browser the lanes share the window's height.
+                        visible: !parent.s.hideBrowser
                         text: "Lane Height (max " + parent.maxLaneHeight(parent.lanes, parent.hideDecks) + ")"
                         tip: "The maximum leaves room on the screen for Traktor's header, the decks if shown, and a usable browser."
                         value: parent.laneHeight + " px"

@@ -7,10 +7,12 @@ PATH is the Traktor copy (default DEFAULT_COPY); WaveLanes.app passes
 the one it was built for. The settings are the layout ones of the settings
 window inside Traktor, kept in settings.json (ui_settings.py):
     hideDecks    true: the Parallel view has no track decks, only the lanes
+    hideBrowser  true: no browser under the lanes (in any view), and no decks
+                 over the maximised one
     lanes        3 or 4 parallel lanes; with three, lane D goes (deck D stays)
     laneHeight   lane height in pixels, at least 91 (Traktor's own)
     waveBuffer   lane waveform ring buffer, 2^N samples, 21 (Traktor's own) to 24
-The four only depend on each other for room on the screen.
+They only depend on each other for room on the screen.
 
 The layout and the buffer live in the executable and the QML in the app, so
 they can only change while Traktor is closed, and the copy is re-signed
@@ -65,9 +67,14 @@ def load():
 
 def layout_change(p):
     """(edits, removals) for the layout, or None for Traktor's own."""
-    edits = [] if p["laneHeight"] == 91 else layout_patch.lane_edits(p["laneHeight"], p["lanes"])
-    removals = layout_patch.lane_removals(p["lanes"], decks=p["hideDecks"])
-    return (edits, removals) if edits or removals else None
+    if p["hideBrowser"]:
+        # No browser to take the free height: the lanes share it.
+        edits = layout_patch.lane_edits(None, p["lanes"])
+    else:
+        edits = [] if p["laneHeight"] == 91 else layout_patch.lane_edits(p["laneHeight"], p["lanes"])
+    removals = layout_patch.lane_removals(p["lanes"], decks=p["hideDecks"], browser=p["hideBrowser"])
+    moves = layout_patch.lane_moves(p["lanes"], browser=p["hideBrowser"])
+    return (edits, removals, moves) if edits or removals else None
 
 
 def panels(p):

@@ -91,6 +91,10 @@ so it also repairs an install (for example, after moving the folder).
   WaveLanes; until then they show in blue. Hover over an option's name
   for what it does.
 - In a short lane, the settings window marks in amber what does not fit.
+- **Hide Browser** (in *Layout*) removes the browser under the lanes, so they
+  share the whole height of the window, and the decks over the maximised
+  browser. The browser then only opens maximised, in every view; the other
+  views keep their decks, with black bands where the browser was.
 - The panels hide outside the Parallel view, with the browser maximised and
   while a Traktor menu is open.
 - The right panels cover Traktor's waveform zoom buttons. To reach them, hide

@@ -10,8 +10,8 @@ import "../../Defines"
 // chosen in the settings window. They are placed over the lane by
 // wave_height_mac.js (wave_height.js on Windows), which finds them by their
 // title. BPM, key and loop size step with the wheel or with a
-// left/right click; a hotcue jumps or is set with a click and is deleted with
-// a right click. Colours follow Traktor's (Screens/Defines/Colors.qml) and
+// left/right click; a hotcue works as Traktor's hotcue buttons and is deleted
+// with a right click. Colours follow Traktor's (Screens/Defines/Colors.qml) and
 // the font is the one Traktor ships for its controller screens.
 Window {
     id: win
@@ -81,6 +81,19 @@ Window {
     AppProperty { id: deleteHotcue;      path: pathPrefix + "track.cue.delete_hotcue" }
 
     readonly property bool isMaster: Number(masterDeckId.value) === deckId
+
+    // select_or_set_hotcue holds a hotcue index (0-7) while its button is
+    // down. Its idle value is not known for sure: the one found before a
+    // press, unless that is an index (left by a press never let go), else -1.
+    property var hotcueIdle: -1
+    function hotcueDown(i) {
+        var v = selectOrSetHotcue.value
+        if (typeof v === "number" && (v < 0 || v > 7)) hotcueIdle = v
+        selectOrSetHotcue.value = i
+    }
+    function hotcueUp() {
+        selectOrSetHotcue.value = hotcueIdle
+    }
 
 
     // A MIDI note mapped in the Controller Manager to MIDI Controls > Button N
@@ -457,7 +470,8 @@ Window {
     }
 
     // Hotcues 1-8 in two rows of 4, numbered in their type's colour; empty
-    // ones dimmed. A click jumps or sets, a right click deletes.
+    // ones dimmed. They work as Traktor's hotcue buttons (a press jumps or
+    // sets, holding on a stopped deck plays); a right click deletes.
     Component {
         id: cuesElement
         Grid {
@@ -493,16 +507,32 @@ Window {
                         font.pixelSize: 11
                         font.bold: true
                     }
+                    // Held as a controller's hotcue pad is (HoldPropertyAdapter
+                    // in Traktor's X1 MK3 mapping): the index while the button
+                    // is down, the idle value again when it is let go. Traktor
+                    // then does the rest: on a stopped deck a press jumps
+                    // there, holding plays from it and letting go goes back.
                     MouseArea {
                         anchors.fill: parent
                         enabled: isLoaded.value
                         acceptedButtons: Qt.LeftButton | Qt.RightButton
-                        onClicked: {
+                        property bool holding: false
+                        onPressed: {
                             if (mouse.button === Qt.RightButton) {
                                 if (cue.exists) deleteHotcue.value = index
-                            } else {
-                                selectOrSetHotcue.value = index
+                                return
                             }
+                            win.hotcueDown(index)
+                            holding = true
+                        }
+                        onReleased: release()
+                        onCanceled: release()
+                        onEnabledChanged: if (!enabled) release()
+                        Component.onDestruction: release()
+                        function release() {
+                            if (!holding) return
+                            holding = false
+                            win.hotcueUp()
                         }
                     }
                 }

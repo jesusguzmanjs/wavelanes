@@ -107,12 +107,51 @@ LANES = 3
 
 # (scope container, target container, attribute, new value)
 # Scope limits the edit to one subtree, since names repeat across views.
+# A value of None removes the attribute.
+# height None: the lanes share the free height, as the browser does when it
+# is there (a minimum and no maximum); used when the browser is hidden. Every
+# container between the main slot and the lane loses its maximum too: MaxY="-2"
+# keeps a container at its compiled-in size, which left the lanes at 91 px.
+# The engine shares the free height evenly between the flexible containers of
+# a level, so with three lanes lane C goes into the AB area (lane_moves):
+# alone in the CD area it took half the free height.
+def lane_area(deck, lanes):
+    return "AB" if deck in "AB" or lanes == 3 else "CD"
+
+
 def lane_edits(height, lanes=LANES):
+    if height is None:
+        decks = "ABCD"[:lanes]
+        edits = [("Main GUI Slot Normal", f"Parallel Wave Area {area}", "MaxY", None)
+                 for area in sorted({lane_area(deck, lanes) for deck in decks})]
+        for deck in decks:
+            area = lane_area(deck, lanes)
+            edits += [
+                (f"Parallel Wave Area {area}", f"Deck Area {deck}", "MaxY", None),
+                (f"Parallel Wave Area {area}", f"Parallel Track {deck}", "MaxY", None),
+                (f"Parallel Track {deck}", f"Parallel Wave {deck}", "MinY", "91"),
+                (f"Parallel Track {deck}", f"Parallel Wave {deck}", "MaxY", None),
+            ]
+        if lanes == 3:
+            # The engine orders a container's children by Order, not by their
+            # place in the XML; lane C's is 0 in the CD area, which put it first.
+            edits.append(("Parallel Wave Area AB", "Deck Area C", "Order", "2"))
+        return edits
     return [
         (f"Parallel Track {deck}", f"Parallel Wave {deck}", attr, str(height))
         for deck in "ABCD"[:lanes]
         for attr in ("MinY", "MaxY")
     ]
+
+
+# (scope container, element, scope container, new parent): the element moves
+# to the end of the new parent, before the other changes. Only for three lanes
+# that share the window's height (see lane_edits); lane_removals then removes
+# the CD area left without lanes.
+def lane_moves(lanes=LANES, browser=False):
+    if browser and lanes == 3:
+        return [("Parallel Wave Area CD", "Deck Area C", "Main GUI Slot Normal", "Parallel Wave Area AB")]
+    return []
 
 
 # (scope container, target element) removed with all its children. Shrinking a
@@ -122,12 +161,22 @@ def lane_edits(height, lanes=LANES):
 # go; the other views (Essential, Extended, Mixer...) keep their decks, since
 # every view is the same layout with containers switched on and off by name.
 # With decks=False they stay, and only lane D goes for three lanes.
-def lane_removals(lanes=LANES, decks=True):
+# With browser=True the browser goes from under the lanes, and the decks from
+# over the maximised browser. Unlike the decks, the browser is not one per
+# view: it goes from every view, which then only has the maximised one.
+def lane_removals(lanes=LANES, decks=True, browser=False):
     removals = []
+    if browser:
+        removals.append(("Main GUI Slot Normal", "Browser"))
+        removals += [("Main GUI Slot Max Browser", area)
+                     for area in ("Preparation Deck Area", "Performance Deck Area")]
     if decks:
         removals.append(("Preparation Deck Area", "Deck Parallel Full Area A"))
         removals += [("Performance Deck Area", f"Deck Parallel Full Area {deck}") for deck in "ABCD"]
-    if lanes == 3:
+    if lanes == 3 and browser:
+        # Lane C is in the AB area now (lane_moves): the CD area goes whole.
+        removals.append(("Main GUI Slot Normal", "Parallel Wave Area CD"))
+    elif lanes == 3:
         # Three parallel lanes instead of four; deck D itself still exists.
         removals.append(("Parallel Wave Area CD", "Deck Area D"))
     return removals
@@ -214,16 +263,28 @@ def element_span(text, name_pos):
     sys.exit("Unbalanced layout XML")
 
 
-def apply_edits(xml, edits=None, removals=None):
+def apply_edits(xml, edits=None, removals=None, moves=()):
     # Edit the raw text rather than re-serialising, so formatting the engine
     # might depend on (attribute order, quoting) stays untouched.
     edits = EDITS if edits is None else edits
     removals = REMOVALS if removals is None else removals
+    text = xml.decode("utf-8")
     root = ET.fromstring(xml)
+    for scope, name, into_scope, into in moves:
+        if find_scoped(root, scope, name) is None or find_scoped(root, into_scope, into) is None:
+            sys.exit(f"Container not found: {scope} > {name}, or {into_scope} > {into}")
+        s = text.index(f'Name="{scope}"')
+        start, end = element_span(text, text.index(f'Name="{name}"', s))
+        moved = text[start:end]
+        text = text[:start] + text[end:]
+        s = text.index(f'Name="{into_scope}"')
+        _, parent_end = element_span(text, text.index(f'Name="{into}"', s))
+        closing = text.rindex("</", 0, parent_end)
+        text = text[:closing] + moved + text[closing:]
+    root = ET.fromstring(text)
     for scope, name, *_ in edits + removals:
         if find_scoped(root, scope, name) is None:
             sys.exit(f"Container not found: {scope} > {name}")
-    text = xml.decode("utf-8")
     for scope, name in removals:
         s = text.index(f'Name="{scope}"')
         start, end = element_span(text, text.index(f'Name="{name}"', s))
@@ -233,7 +294,9 @@ def apply_edits(xml, edits=None, removals=None):
         t = text.index(f'Name="{name}"', s)
         tag_end = text.index(">", t)
         tag = text[t:tag_end]
-        if re.search(rf'\b{attr}="[^"]*"', tag):
+        if value is None:
+            tag = re.sub(rf'\s+{attr}="[^"]*"', "", tag)
+        elif re.search(rf'\b{attr}="[^"]*"', tag):
             tag = re.sub(rf'\b{attr}="[^"]*"', f'{attr}="{value}"', tag)
         else:
             tag += f' {attr}="{value}"'

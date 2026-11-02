@@ -4,7 +4,8 @@ import QtQuick 2.15
 // settings.json, in the user's data folder (ui_settings.py): read on start and written a moment
 // after each change. What the panels show applies at once.
 //
-// The layout settings (hideDecks, lanes, laneHeight, waveBuffer) are patched
+// The layout settings (hideDecks, hideBrowser, lanes, laneHeight, waveBuffer)
+// are patched
 // into Traktor's copy by the launcher, with Traktor closed, the next time it
 // opens Traktor; it records what it applied in "applied" (ui_settings.py).
 // One that differs from it waits for a restart, and can be put back.
@@ -42,13 +43,14 @@ QtObject {
     property int midiButton: 4
     // Layout: applied by the launcher on the next start (see above).
     property bool hideDecks: true
+    property bool hideBrowser: false
     property int lanes: 3
     property int laneHeight: 216
     property int waveBuffer: 22
     // What the launcher last applied, {hideDecks, lanes, laneHeight,
     // waveBuffer}, or null; written by it, only kept here.
     property var applied: null
-    readonly property var layoutKeys: ["hideDecks", "lanes", "laneHeight", "waveBuffer"]
+    readonly property var layoutKeys: ["hideDecks", "hideBrowser", "lanes", "laneHeight", "waveBuffer"]
 
     // Not kept.
     property bool configOpen: false
@@ -57,7 +59,7 @@ QtObject {
 
     readonly property var keys: ["left", "right", "leftWidth", "rightWidth", "showLeft", "showInfo",
                                  "showStems", "stemVolume", "stemFilter", "stemFx", "midiButton",
-                                 "hideDecks", "lanes", "laneHeight", "waveBuffer", "applied"]
+                                 "hideDecks", "hideBrowser", "lanes", "laneHeight", "waveBuffer", "applied"]
 
     // The elements, in the order the settings window lists them, and their
     // names there. bpm and bpmPitch are the same element, with and without
@@ -297,6 +299,7 @@ QtObject {
     onStemFxChanged: changed()
     onMidiButtonChanged: changed()
     onHideDecksChanged: changed()
+    onHideBrowserChanged: changed()
     onLanesChanged: changed()
     onLaneHeightChanged: changed()
     onWaveBufferChanged: changed()

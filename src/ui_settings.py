@@ -3,7 +3,8 @@
 The settings window inside Traktor (qml/PanelSettings.qml) keeps all its
 settings in settings.json, in the user's own data folder (UI), so
 that a new download of this folder keeps them. Most apply at once.
-The layout ones (hideDecks, lanes, laneHeight, waveBuffer) are patched into
+The layout ones (hideDecks, hideBrowser, lanes, laneHeight, waveBuffer) are
+patched into
 Traktor's copy, which can only happen with Traktor closed: the launcher reads
 them here before opening Traktor, applies what changed (mac/traktor_config.py)
 and records what it applied in "applied":
@@ -26,7 +27,7 @@ else:
 UI = DATA / "settings.json"
 # Where it was kept before, under its old name, at the root of this repo.
 OLD_UI = Path(__file__).resolve().parent.parent / "traktor-custom.ui.json"
-LAYOUT_DEFAULTS = {"hideDecks": True, "lanes": 3, "laneHeight": 216, "waveBuffer": 22}
+LAYOUT_DEFAULTS = {"hideDecks": True, "hideBrowser": False, "lanes": 3, "laneHeight": 216, "waveBuffer": 22}
 
 
 class SettingsError(Exception):
@@ -61,6 +62,8 @@ def layout(ui=UI):
     p = {key: settings.get(key, value) for key, value in LAYOUT_DEFAULTS.items()}
     if type(p["hideDecks"]) is not bool:
         raise SettingsError(f"{ui.name}: hideDecks must be true or false, not {p['hideDecks']!r}")
+    if type(p["hideBrowser"]) is not bool:
+        raise SettingsError(f"{ui.name}: hideBrowser must be true or false, not {p['hideBrowser']!r}")
     if type(p["lanes"]) is not int or p["lanes"] not in (3, 4):
         raise SettingsError(f"{ui.name}: lanes must be 3 or 4, not {p['lanes']!r}")
     if type(p["laneHeight"]) is not int or p["laneHeight"] < 91:
